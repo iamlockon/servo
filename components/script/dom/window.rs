@@ -51,6 +51,10 @@ use js::rust::{
     CustomAutoRooter, CustomAutoRooterGuard, HandleObject, HandleValue, MutableHandleObject,
     MutableHandleValue,
 };
+use layout_api::{
+    FragmentType, Layout, PendingImageState, QueryMsg, ReflowGoal, ReflowRequest,
+    TrustedNodeAddress, combine_id_with_fragment_type,
+};
 use malloc_size_of::MallocSizeOf;
 use media::WindowGLContext;
 use net_traits::ResourceThreads;
@@ -67,10 +71,6 @@ use script_bindings::codegen::GenericBindings::NavigatorBinding::NavigatorMethod
 use script_bindings::codegen::GenericBindings::PerformanceBinding::PerformanceMethods;
 use script_bindings::interfaces::WindowHelpers;
 use script_bindings::root::Root;
-use script_layout_interface::{
-    FragmentType, Layout, PendingImageState, QueryMsg, ReflowGoal, ReflowRequest,
-    TrustedNodeAddress, combine_id_with_fragment_type,
-};
 use script_traits::ScriptThreadMessage;
 use selectors::attr::CaseSensitivity;
 use servo_arc::Arc as ServoArc;
@@ -152,7 +152,7 @@ use crate::dom::storage::Storage;
 #[cfg(feature = "bluetooth")]
 use crate::dom::testrunner::TestRunner;
 use crate::dom::trustedtypepolicyfactory::TrustedTypePolicyFactory;
-use crate::dom::types::UIEvent;
+use crate::dom::types::{ImageBitmap, UIEvent};
 use crate::dom::webglrenderingcontext::WebGLCommandSender;
 #[cfg(feature = "webgpu")]
 use crate::dom::webgpu::identityhub::IdentityHub;
@@ -1209,9 +1209,16 @@ impl WindowMethods<crate::DomTypeHolder> for Window {
         options: &ImageBitmapOptions,
         can_gc: CanGc,
     ) -> Rc<Promise> {
-        let p = self
-            .as_global_scope()
-            .create_image_bitmap(image, 0, 0, None, None, options, can_gc);
+        let p = ImageBitmap::create_image_bitmap(
+            self.as_global_scope(),
+            image,
+            0,
+            0,
+            None,
+            None,
+            options,
+            can_gc,
+        );
         p
     }
 
@@ -1226,7 +1233,8 @@ impl WindowMethods<crate::DomTypeHolder> for Window {
         options: &ImageBitmapOptions,
         can_gc: CanGc,
     ) -> Rc<Promise> {
-        let p = self.as_global_scope().create_image_bitmap(
+        let p = ImageBitmap::create_image_bitmap(
+            self.as_global_scope(),
             image,
             sx,
             sy,
